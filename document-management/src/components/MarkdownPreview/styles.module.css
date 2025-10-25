@@ -1,0 +1,150 @@
+.markdownPreview {
+  padding: 24px;
+  background: #fff;
+  overflow-y: auto;
+  height: 100%;
+  line-height: 1.6;
+  color: #333;
+}
+
+.markdownPreview h1 {
+  font-size: 2em;
+  font-weight: 600;
+  margin: 0.67em 0;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #eaecef;
+}
+
+.markdownPreview h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 0.83em 0;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #eaecef;
+}
+
+.markdownPreview h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin: 1em 0;
+}
+
+.markdownPreview h4 {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 1.33em 0;
+}
+
+.markdownPreview h5 {
+  font-size: 0.875em;
+  font-weight: 600;
+  margin: 1.67em 0;
+}
+
+.markdownPreview h6 {
+  font-size: 0.85em;
+  font-weight: 600;
+  margin: 2.33em 0;
+  color: #6a737d;
+}
+
+.markdownPreview p {
+  margin: 1em 0;
+}
+
+.markdownPreview ul,
+.markdownPreview ol {
+  padding-left: 2em;
+  margin: 1em 0;
+}
+
+.markdownPreview li {
+  margin: 0.25em 0;
+}
+
+.markdownPreview blockquote {
+  margin: 1em 0;
+  padding: 0 1em;
+  color: #6a737d;
+  border-left: 0.25em solid #dfe2e5;
+}
+
+.markdownPreview hr {
+  height: 0.25em;
+  padding: 0;
+  margin: 24px 0;
+  background-color: #e1e4e8;
+  border: 0;
+}
+
+.codeBlock {
+  background: #f6f8fa;
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 1em 0;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.875em;
+  line-height: 1.45;
+}
+
+.codeBlock code {
+  background: transparent;
+  padding: 0;
+  border: none;
+}
+
+.inlineCode {
+  background: #f6f8fa;
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  border-radius: 6px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  overflow: auto;
+  display: block;
+}
+
+.table th,
+.table td {
+  padding: 6px 13px;
+  border: 1px solid #dfe2e5;
+}
+
+.table th {
+  font-weight: 600;
+  background: #f6f8fa;
+}
+
+.table tr {
+  background-color: #fff;
+  border-top: 1px solid #c6cbd1;
+}
+
+.table tr:nth-child(2n) {
+  background-color: #f6f8fa;
+}
+
+.link {
+  color: #0366d6;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1em 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

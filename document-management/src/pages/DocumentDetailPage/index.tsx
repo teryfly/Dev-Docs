@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Space, Modal, message, Input } from 'antd';
-import { ArrowLeftOutlined, DownloadOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, DownloadOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
 import { Editor } from '@monaco-editor/react';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useDocumentsHistory, useUpdateDocument, useDeleteAllHistory } from '@/hooks/useDocuments';
 import HistoryDrawer from '@/components/HistoryDrawer';
 import RenameModal from '@/components/RenameModal';
 import MoveCategoryModal from '@/components/MoveCategoryModal';
+import MarkdownPreview from '@/components/MarkdownPreview';
 import { PlanDocumentResponse } from '@/types/api';
 import { useCompareStore } from '@/stores/compareStore';
 import styles from './styles.module.css';
+
+type ViewMode = 'preview' | 'edit';
 
 const DocumentDetailPage: React.FC = () => {
   const { filename } = useParams<{ filename: string }>();
@@ -20,10 +23,16 @@ const DocumentDetailPage: React.FC = () => {
 
   const [content, setContent] = useState('');
   const [currentDoc, setCurrentDoc] = useState<PlanDocumentResponse | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  
+  // 分栏拖动相关状态
+  const [leftWidth, setLeftWidth] = useState(40); // 左侧宽度百分比，默认40%
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const decodedFilename = filename ? decodeURIComponent(filename) : '';
 
@@ -100,16 +109,58 @@ const DocumentDetailPage: React.FC = () => {
     navigate(`/app/projects/${projectId}/categories/${categoryId}`);
   };
 
+  const toggleViewMode = () => {
+    setViewMode(prev => prev === 'preview' ? 'edit' : 'preview');
+  };
+
+  // 处理拖动开始
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  // 处理拖动中
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !containerRef.current) return;
+      
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newLeftWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+      
+      // 限制宽度在20%到80%之间
+      if (newLeftWidth >= 20 && newLeftWidth <= 80) {
+        setLeftWidth(newLeftWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  // Ctrl+S 保存快捷键
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        handleSave();
+        if (viewMode === 'edit') {
+          handleSave();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [content, currentDoc]);
+  }, [content, currentDoc, viewMode]);
 
   return (
     <div className={styles.container}>
@@ -122,6 +173,12 @@ const DocumentDetailPage: React.FC = () => {
           <span className={styles.version}>当前: v{currentDoc?.version}</span>
         </Space>
         <Space>
+          <Button 
+            icon={viewMode === 'preview' ? <EditOutlined /> : <EyeOutlined />}
+            onClick={toggleViewMode}
+          >
+            {viewMode === 'preview' ? '编辑' : '预览'}
+          </Button>
           <Button onClick={() => setRenameModalOpen(true)}>重命名</Button>
           <Button onClick={() => setMoveModalOpen(true)}>移动</Button>
           <Button danger onClick={handleDeleteAll}>删除全部历史</Button>
@@ -129,30 +186,60 @@ const DocumentDetailPage: React.FC = () => {
         </Space>
       </div>
 
-      <div className={styles.editorContainer}>
-        <Editor
-          height="calc(100vh - 200px)"
-          defaultLanguage="markdown"
-          value={content}
-          onChange={(value) => setContent(value || '')}
-          options={{
-            minimap: { enabled: false },
-            lineNumbers: 'on',
-            wordWrap: 'on'
-          }}
-        />
-      </div>
+      {viewMode === 'preview' ? (
+        <div className={styles.previewContainer}>
+          <MarkdownPreview content={content} />
+        </div>
+      ) : (
+        <div 
+          ref={containerRef}
+          className={styles.editContainer}
+          style={{ cursor: isDragging ? 'col-resize' : 'default' }}
+        >
+          <div 
+            className={styles.editorPane}
+            style={{ width: `${leftWidth}%` }}
+          >
+            <Editor
+              height="100%"
+              defaultLanguage="markdown"
+              value={content}
+              onChange={(value) => setContent(value || '')}
+              options={{
+                minimap: { enabled: false },
+                lineNumbers: 'on',
+                wordWrap: 'on',
+                fontSize: 14
+              }}
+            />
+          </div>
+          
+          <div 
+            className={styles.resizer}
+            onMouseDown={handleMouseDown}
+          />
+          
+          <div 
+            className={styles.previewPane}
+            style={{ width: `${100 - leftWidth}%` }}
+          >
+            <MarkdownPreview content={content} />
+          </div>
+        </div>
+      )}
 
-      <div className={styles.actions}>
-        <Space>
-          <Button type="primary" onClick={handleSave}>
-            保存为新版本
-          </Button>
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>
-            导出.md
-          </Button>
-        </Space>
-      </div>
+      {viewMode === 'edit' && (
+        <div className={styles.actions}>
+          <Space>
+            <Button type="primary" onClick={handleSave}>
+              保存为新版本
+            </Button>
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>
+              导出.md
+            </Button>
+          </Space>
+        </div>
+      )}
 
       <HistoryDrawer
         open={historyDrawerOpen}

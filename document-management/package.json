@@ -10,21 +10,26 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.22.0",
-    "@tanstack/react-query": "^5.17.0",
-    "zustand": "^4.5.0",
-    "antd": "^5.13.0",
     "@ant-design/icons": "^5.2.6",
     "@monaco-editor/react": "^4.6.0",
+    "@tanstack/react-query": "^5.17.0",
+    "antd": "^5.13.0",
     "axios": "^1.6.5",
-    "dayjs": "^1.11.10"
+    "dayjs": "^1.11.10",
+    "plantuml-encoder": "^1.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^6.22.0",
+    "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@types/node": "^20.11.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/node": "^20.11.5",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "~5.6.2",
     "vite": "^6.0.1"

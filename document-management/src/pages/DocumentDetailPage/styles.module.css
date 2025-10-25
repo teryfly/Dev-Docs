@@ -23,6 +23,49 @@
   font-size: 14px;
 }
 
+.previewContainer {
+  flex: 1;
+  overflow: auto;
+  background: #fff;
+}
+
+.editContainer {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: #fff;
+  position: relative;
+}
+
+.editorPane {
+  height: 100%;
+  overflow: hidden;
+  border-right: 1px solid #e8e8e8;
+}
+
+.resizer {
+  width: 8px;
+  background: #f0f0f0;
+  cursor: col-resize;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+}
+
+.resizer:hover {
+  background: #d9d9d9;
+}
+
+.resizer:active {
+  background: #bfbfbf;
+}
+
+.previewPane {
+  height: 100%;
+  overflow: auto;
+}
+
 .editorContainer {
   flex: 1;
   padding: 16px 24px;
