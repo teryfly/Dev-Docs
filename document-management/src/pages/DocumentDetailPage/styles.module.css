@@ -65,15 +65,3 @@
   height: 100%;
   overflow: auto;
 }
-
-.editorContainer {
-  flex: 1;
-  padding: 16px 24px;
-  background: #fff;
-}
-
-.actions {
-  padding: 16px 24px;
-  background: #fff;
-  border-top: 1px solid #f0f0f0;
-}

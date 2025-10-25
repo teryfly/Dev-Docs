@@ -97,13 +97,18 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
     });
   };
 
+  const goDetail = (record: PlanDocumentResponse) => {
+    if (!projectId) return;
+    navigate(`/app/projects/${projectId}/docs/${encodeURIComponent(record.filename)}`);
+  };
+
   const columns: TableProps<PlanDocumentResponse>['columns'] = [
     {
       title: '文件名',
       dataIndex: 'filename',
       key: 'filename',
       render: (text, record) => (
-        <a onClick={() => navigate(`/app/projects/${projectId}/categories/${categoryId}/docs/${encodeURIComponent(record.filename)}`)}>
+        <a onClick={() => goDetail(record)}>
           {text}
         </a>
       )
@@ -130,7 +135,7 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
       key: 'actions',
       render: (_, record) => (
         <Space size="small">
-          <Button type="link" size="small" onClick={() => navigate(`/app/projects/${projectId}/categories/${categoryId}/docs/${encodeURIComponent(record.filename)}`)}>
+          <Button type="link" size="small" onClick={() => goDetail(record)}>
             详情
           </Button>
           <Button type="link" size="small" onClick={() => onOpenHistory(record.filename)}>

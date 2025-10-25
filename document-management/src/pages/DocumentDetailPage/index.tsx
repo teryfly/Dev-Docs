@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Space, Modal, message, Input } from 'antd';
-import { ArrowLeftOutlined, DownloadOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, DownloadOutlined, EditOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons';
 import { Editor } from '@monaco-editor/react';
 import { useSelectionStore } from '@/stores/selectionStore';
-import { useDocumentsHistory, useUpdateDocument, useDeleteAllHistory } from '@/hooks/useDocuments';
+import { useUpdateDocument, useDeleteAllHistory } from '@/hooks/useDocuments';
 import HistoryDrawer from '@/components/HistoryDrawer';
 import RenameModal from '@/components/RenameModal';
 import MoveCategoryModal from '@/components/MoveCategoryModal';
 import MarkdownPreview from '@/components/MarkdownPreview';
 import { PlanDocumentResponse } from '@/types/api';
 import { useCompareStore } from '@/stores/compareStore';
+import { useProjectDocuments, useSelectHistoryByFilename } from '@/hooks/useProjectDocuments';
 import styles from './styles.module.css';
 
 type ViewMode = 'preview' | 'edit';
@@ -29,18 +30,14 @@ const DocumentDetailPage: React.FC = () => {
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   
-  // 分栏拖动相关状态
-  const [leftWidth, setLeftWidth] = useState(40); // 左侧宽度百分比，默认40%
+  const [leftWidth, setLeftWidth] = useState(40);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const decodedFilename = filename ? decodeURIComponent(filename) : '';
 
-  const { data: history, refetch } = useDocumentsHistory({
-    project_id: projectId,
-    category_id: categoryId,
-    filename: decodedFilename
-  });
+  const { data: allDocs } = useProjectDocuments(projectId);
+  const history = useSelectHistoryByFilename(allDocs, decodedFilename, categoryId);
 
   const updateMutation = useUpdateDocument();
   const deleteAllMutation = useDeleteAllHistory();
@@ -60,15 +57,19 @@ const DocumentDetailPage: React.FC = () => {
       id: currentDoc.id,
       data: { content }
     });
-    refetch();
+    setViewMode('preview');
   };
 
   const handleExport = () => {
+    let exportFilename = decodedFilename;
+    if (!exportFilename.toLowerCase().endsWith('.md')) {
+      exportFilename = `${exportFilename}.md`;
+    }
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = decodedFilename;
+    a.download = exportFilename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -90,13 +91,15 @@ const DocumentDetailPage: React.FC = () => {
         </div>
       ),
       onOk: async () => {
-        if (deleteConfirmText === decodedFilename && projectId && categoryId) {
-          await deleteAllMutation.mutateAsync({
-            project_id: projectId,
-            category_id: categoryId,
-            filename: decodedFilename
-          });
-          navigate(`/app/projects/${projectId}/categories/${categoryId}`);
+        if (deleteConfirmText === decodedFilename && projectId) {
+          if (categoryId) {
+            await deleteAllMutation.mutateAsync({
+              project_id: projectId,
+              category_id: categoryId,
+              filename: decodedFilename
+            });
+          }
+          navigate(`/app/projects/${projectId}`);
         } else {
           message.error('文件名不匹配');
           return Promise.reject();
@@ -106,28 +109,27 @@ const DocumentDetailPage: React.FC = () => {
   };
 
   const handleBack = () => {
-    navigate(`/app/projects/${projectId}/categories/${categoryId}`);
+    if (projectId) {
+      navigate(`/app/projects/${projectId}`);
+    } else {
+      navigate('/app/projects');
+    }
   };
 
   const toggleViewMode = () => {
     setViewMode(prev => prev === 'preview' ? 'edit' : 'preview');
   };
 
-  // 处理拖动开始
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
   };
 
-  // 处理拖动中
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging || !containerRef.current) return;
-      
       const containerRect = containerRef.current.getBoundingClientRect();
       const newLeftWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
-      
-      // 限制宽度在20%到80%之间
       if (newLeftWidth >= 20 && newLeftWidth <= 80) {
         setLeftWidth(newLeftWidth);
       }
@@ -148,7 +150,6 @@ const DocumentDetailPage: React.FC = () => {
     };
   }, [isDragging]);
 
-  // Ctrl+S 保存快捷键
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -173,6 +174,23 @@ const DocumentDetailPage: React.FC = () => {
           <span className={styles.version}>当前: v{currentDoc?.version}</span>
         </Space>
         <Space>
+          {viewMode === 'edit' && (
+            <Button 
+              type="primary" 
+              icon={<SaveOutlined />}
+              onClick={handleSave}
+            >
+              保存为新版本
+            </Button>
+          )}
+          {viewMode === 'preview' && (
+            <Button 
+              icon={<DownloadOutlined />} 
+              onClick={handleExport}
+            >
+              导出.md
+            </Button>
+          )}
           <Button 
             icon={viewMode === 'preview' ? <EditOutlined /> : <EyeOutlined />}
             onClick={toggleViewMode}
@@ -225,19 +243,6 @@ const DocumentDetailPage: React.FC = () => {
           >
             <MarkdownPreview content={content} />
           </div>
-        </div>
-      )}
-
-      {viewMode === 'edit' && (
-        <div className={styles.actions}>
-          <Space>
-            <Button type="primary" onClick={handleSave}>
-              保存为新版本
-            </Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExport}>
-              导出.md
-            </Button>
-          </Space>
         </div>
       )}
 

@@ -33,7 +33,7 @@ const CreateDocumentModal: React.FC<CreateDocumentModalProps> = ({ open, onClose
       form.resetFields();
       setContent('');
       onClose();
-      navigate(`/app/projects/${projectId}/categories/${categoryId}/docs/${encodeURIComponent(result.filename)}`);
+      navigate(`/app/projects/${projectId}/docs/${encodeURIComponent(result.filename)}`);
     } catch (error) {
       console.error('Validation failed:', error);
     }

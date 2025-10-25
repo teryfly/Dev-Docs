@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Space, Switch, Typography } from 'antd';
 import { ArrowLeftOutlined, SwapOutlined } from '@ant-design/icons';
@@ -13,7 +13,7 @@ const ComparePage: React.FC = () => {
   const { filename } = useParams<{ filename: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { projectId, categoryId } = useSelectionStore();
+  const { projectId } = useSelectionStore();
 
   const leftId = Number(searchParams.get('left'));
   const rightId = Number(searchParams.get('right'));
@@ -28,7 +28,11 @@ const ComparePage: React.FC = () => {
   const decodedFilename = filename ? decodeURIComponent(filename) : '';
 
   const handleBack = () => {
-    navigate(`/app/projects/${projectId}/categories/${categoryId}/docs/${encodeURIComponent(decodedFilename)}`);
+    if (projectId) {
+      navigate(`/app/projects/${projectId}/docs/${encodeURIComponent(decodedFilename)}`);
+    } else {
+      navigate('/app/projects');
+    }
   };
 
   const handleSwap = () => {

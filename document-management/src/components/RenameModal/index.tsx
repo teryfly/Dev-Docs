@@ -16,13 +16,13 @@ interface RenameModalProps {
 const RenameModal: React.FC<RenameModalProps> = ({ open, document, onClose }) => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
-  const { projectId, categoryId } = useSelectionStore();
+  const { projectId } = useSelectionStore();
   const updateMutation = useUpdateDocument();
 
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
-      if (!document) return;
+      if (!document || !projectId) return;
 
       const result = await updateMutation.mutateAsync({
         id: document.id,
@@ -31,7 +31,7 @@ const RenameModal: React.FC<RenameModalProps> = ({ open, document, onClose }) =>
 
       form.resetFields();
       onClose();
-      navigate(`/app/projects/${projectId}/categories/${categoryId}/docs/${encodeURIComponent(result.filename)}`);
+      navigate(`/app/projects/${projectId}/docs/${encodeURIComponent(result.filename)}`);
     } catch (error) {
       console.error('Validation failed:', error);
     }

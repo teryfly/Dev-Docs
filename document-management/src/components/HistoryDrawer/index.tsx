@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Drawer, List, Button, Space, Modal, Typography, Tag } from 'antd';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useCompareStore } from '@/stores/compareStore';
@@ -23,12 +23,17 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ open, filename, onClose }
   const { leftDocId, rightDocId, setLeftDocId, setRightDocId, canCompare } = useCompareStore();
   const [previewDoc, setPreviewDoc] = useState<PlanDocumentResponse | null>(null);
 
-  // Use unified project cache
   const { data: allDocs } = useProjectDocuments(projectId);
   const history = useSelectHistoryByFilename(allDocs, filename, categoryId);
 
   const deleteMutation = useDeleteDocument();
   const updateMutation = useUpdateDocument();
+
+  useEffect(() => {
+    if (open && history && history.length > 0) {
+      setLeftDocId(history[0].id);
+    }
+  }, [open, history, setLeftDocId]);
 
   const handleDelete = (doc: PlanDocumentResponse) => {
     Modal.confirm({
@@ -54,8 +59,9 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ open, filename, onClose }
   };
 
   const handleCompare = () => {
-    if (canCompare() && projectId && categoryId) {
-      navigate(`/app/projects/${projectId}/categories/${categoryId}/docs/${encodeURIComponent(filename)}/compare?left=${leftDocId}&right=${rightDocId}`);
+    if (canCompare() && projectId && filename) {
+      const encodedFilename = encodeURIComponent(filename);
+      navigate(`/app/projects/${projectId}/docs/${encodedFilename}/compare?left=${leftDocId}&right=${rightDocId}`);
     }
   };
 
@@ -85,11 +91,11 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ open, filename, onClose }
             <List.Item
               key={item.id}
               actions={[
-                <Button size="small" onClick={() => setLeftDocId(item.id)}>设为左</Button>,
-                <Button size="small" onClick={() => setRightDocId(item.id)}>设为右</Button>,
-                <Button size="small" onClick={() => setPreviewDoc(item)}>查看</Button>,
-                <Button size="small" onClick={() => handleRevert(item)}>回退</Button>,
-                <Button size="small" danger onClick={() => handleDelete(item)}>删除</Button>
+                <Button size="small" onClick={() => setLeftDocId(item.id)} key="left">设为左</Button>,
+                <Button size="small" onClick={() => setRightDocId(item.id)} key="right">设为右</Button>,
+                <Button size="small" onClick={() => setPreviewDoc(item)} key="preview">查看</Button>,
+                <Button size="small" onClick={() => handleRevert(item)} key="revert">回退</Button>,
+                <Button size="small" danger onClick={() => handleDelete(item)} key="delete">删除</Button>
               ]}
             >
               <List.Item.Meta

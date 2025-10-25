@@ -25,10 +25,22 @@ export const router = createBrowserRouter([
         path: 'projects/:pid/categories/:cid',
         element: <DocumentListPage />
       },
+      // New: project-level document detail (category-agnostic)
+      {
+        path: 'projects/:pid/docs/:filename',
+        element: <DocumentDetailPage />
+      },
+      // Backward compatibility: category-level document detail (still works)
       {
         path: 'projects/:pid/categories/:cid/docs/:filename',
         element: <DocumentDetailPage />
       },
+      // New: project-level compare route
+      {
+        path: 'projects/:pid/docs/:filename/compare',
+        element: <ComparePage />
+      },
+      // Backward compatibility: category-level compare route
       {
         path: 'projects/:pid/categories/:cid/docs/:filename/compare',
         element: <ComparePage />
