@@ -12,27 +12,42 @@ interface MarkdownPreviewProps {
 }
 
 const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, className }) => {
-  // 处理PlantUML代码块
+  // Process PlantUML code blocks, but skip those inside markdown code fences
   const processedContent = useMemo(() => {
     if (!content) return '';
     
-    // 匹配 @startuml ... @enduml 块
-    const plantUmlRegex = /@startuml([\s\S]*?)@enduml/g;
+    // Step 1: Temporarily replace code blocks with placeholders to protect them
+    const codeBlockPlaceholders: string[] = [];
+    let protectedContent = content.replace(/```[\s\S]*?```/g, (match) => {
+      const placeholder = `___CODE_BLOCK_${codeBlockPlaceholders.length}___`;
+      codeBlockPlaceholders.push(match);
+      return placeholder;
+    });
     
-    return content.replace(plantUmlRegex, (match, umlContent) => {
+    // Step 2: Now process @startuml...@enduml blocks that are NOT in code blocks
+    const plantUmlRegex = /@startuml([\s\S]*?)@enduml/g;
+    protectedContent = protectedContent.replace(plantUmlRegex, (match, umlContent) => {
       try {
-        // 编码PlantUML内容
+        // Encode PlantUML content
         const encoded = encode(match);
-        // 使用PlantUML服务器渲染图片
+        // Use PlantUML server to render image
         const imageUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
-        // 返回Markdown图片语法
+        // Return Markdown image syntax
         return `![PlantUML Diagram](${imageUrl})`;
       } catch (error) {
         console.error('PlantUML encoding error:', error);
-        // 如果编码失败，返回代码块
+        // If encoding fails, return as code block
         return `\`\`\`plantuml\n${match}\n\`\`\``;
       }
     });
+    
+    // Step 3: Restore code blocks from placeholders
+    codeBlockPlaceholders.forEach((block, index) => {
+      const placeholder = `___CODE_BLOCK_${index}___`;
+      protectedContent = protectedContent.replace(placeholder, block);
+    });
+    
+    return protectedContent;
   }, [content]);
 
   return (
@@ -41,7 +56,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, className })
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw, rehypeSanitize]}
         components={{
-          // 自定义代码块渲染
+          // Custom code block rendering
           code({ node, inline, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '');
             return !inline ? (
@@ -56,11 +71,11 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, className })
               </code>
             );
           },
-          // 自定义表格渲染
+          // Custom table rendering
           table({ children }) {
             return <table className={styles.table}>{children}</table>;
           },
-          // 自定义链接渲染
+          // Custom link rendering
           a({ href, children }) {
             return (
               <a href={href} target="_blank" rel="noopener noreferrer" className={styles.link}>
@@ -68,7 +83,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, className })
               </a>
             );
           },
-          // 自定义图片渲染
+          // Custom image rendering
           img({ src, alt }) {
             return (
               <img 
