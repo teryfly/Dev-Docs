@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Space, Modal, message, Input } from 'antd';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Button, Space, Modal, message, Input, Tag } from 'antd';
 import { ArrowLeftOutlined, DownloadOutlined, EditOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons';
 import { Editor } from '@monaco-editor/react';
 import { useSelectionStore } from '@/stores/selectionStore';
-import { useUpdateDocument, useDeleteAllHistory } from '@/hooks/useDocuments';
+import { useUpdateDocument, useDeleteAllHistory, useDocumentDetail } from '@/hooks/useDocuments';
 import HistoryDrawer from '@/components/HistoryDrawer';
 import RenameModal from '@/components/RenameModal';
 import MoveCategoryModal from '@/components/MoveCategoryModal';
@@ -12,12 +12,14 @@ import MarkdownPreview from '@/components/MarkdownPreview';
 import { PlanDocumentResponse } from '@/types/api';
 import { useCompareStore } from '@/stores/compareStore';
 import { useProjectDocuments, useSelectHistoryByFilename } from '@/hooks/useProjectDocuments';
+import dayjs from 'dayjs';
 import styles from './styles.module.css';
 
 type ViewMode = 'preview' | 'edit';
 
 const DocumentDetailPage: React.FC = () => {
   const { filename } = useParams<{ filename: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { projectId, categoryId } = useSelectionStore();
   const { setCurrentFilename } = useCompareStore();
@@ -36,20 +38,35 @@ const DocumentDetailPage: React.FC = () => {
 
   const decodedFilename = filename ? decodeURIComponent(filename) : '';
 
+  // Check if viewing specific version via docId query param
+  const docIdParam = searchParams.get('docId');
+  const specificDocId = docIdParam ? Number(docIdParam) : undefined;
+
   const { data: allDocs } = useProjectDocuments(projectId);
   const history = useSelectHistoryByFilename(allDocs, decodedFilename, categoryId);
+
+  // Fetch specific document if docId provided
+  const { data: specificDoc } = useDocumentDetail(specificDocId);
 
   const updateMutation = useUpdateDocument();
   const deleteAllMutation = useDeleteAllHistory();
 
   useEffect(() => {
-    if (history && history.length > 0) {
+    // If viewing specific version, use that document
+    if (specificDoc) {
+      setCurrentDoc(specificDoc);
+      setContent(specificDoc.content);
+      setCurrentFilename(decodedFilename);
+      // Force preview mode when viewing historical version
+      setViewMode('preview');
+    } else if (history && history.length > 0) {
+      // Otherwise use latest version from history
       const latest = history[0];
       setCurrentDoc(latest);
       setContent(latest.content);
       setCurrentFilename(decodedFilename);
     }
-  }, [history, decodedFilename, setCurrentFilename]);
+  }, [history, decodedFilename, setCurrentFilename, specificDoc]);
 
   const handleSave = async () => {
     if (!currentDoc) return;
@@ -58,6 +75,10 @@ const DocumentDetailPage: React.FC = () => {
       data: { content }
     });
     setViewMode('preview');
+    // After save, navigate back to latest version (remove docId param)
+    if (projectId) {
+      navigate(`/app/projects/${projectId}/docs/${encodeURIComponent(decodedFilename)}`);
+    }
   };
 
   const handleExport = () => {
@@ -117,6 +138,11 @@ const DocumentDetailPage: React.FC = () => {
   };
 
   const toggleViewMode = () => {
+    // Only allow toggling to edit mode if viewing latest version
+    if (specificDocId) {
+      message.warning('历史版本仅支持预览，如需编辑请先回退到此版本');
+      return;
+    }
     setViewMode(prev => prev === 'preview' ? 'edit' : 'preview');
   };
 
@@ -154,14 +180,17 @@ const DocumentDetailPage: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        if (viewMode === 'edit') {
+        if (viewMode === 'edit' && !specificDocId) {
           handleSave();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [content, currentDoc, viewMode]);
+  }, [content, currentDoc, viewMode, specificDocId]);
+
+  const isHistoricalVersion = !!specificDocId;
+  const isLatestVersion = history && history.length > 0 && currentDoc?.id === history[0].id;
 
   return (
     <div className={styles.container}>
@@ -171,10 +200,19 @@ const DocumentDetailPage: React.FC = () => {
             返回列表
           </Button>
           <span className={styles.filename}>{decodedFilename}</span>
-          <span className={styles.version}>当前: v{currentDoc?.version}</span>
+          <span className={styles.version}>
+            v{currentDoc?.version}
+            {isLatestVersion && <Tag color="success" style={{ marginLeft: 8 }}>当前</Tag>}
+            {isHistoricalVersion && !isLatestVersion && <Tag color="warning" style={{ marginLeft: 8 }}>历史</Tag>}
+          </span>
+          {currentDoc && (
+            <span className={styles.timestamp}>
+              {dayjs(currentDoc.created_time).format('YYYY-MM-DD HH:mm:ss')}
+            </span>
+          )}
         </Space>
         <Space>
-          {viewMode === 'edit' && (
+          {viewMode === 'edit' && !specificDocId && (
             <Button 
               type="primary" 
               icon={<SaveOutlined />}
@@ -194,12 +232,19 @@ const DocumentDetailPage: React.FC = () => {
           <Button 
             icon={viewMode === 'preview' ? <EditOutlined /> : <EyeOutlined />}
             onClick={toggleViewMode}
+            disabled={isHistoricalVersion && viewMode === 'preview'}
           >
             {viewMode === 'preview' ? '编辑' : '预览'}
           </Button>
-          <Button onClick={() => setRenameModalOpen(true)}>重命名</Button>
-          <Button onClick={() => setMoveModalOpen(true)}>移动</Button>
-          <Button danger onClick={handleDeleteAll}>删除全部历史</Button>
+          <Button onClick={() => setRenameModalOpen(true)} disabled={isHistoricalVersion}>
+            重命名
+          </Button>
+          <Button onClick={() => setMoveModalOpen(true)} disabled={isHistoricalVersion}>
+            移动
+          </Button>
+          <Button danger onClick={handleDeleteAll} disabled={isHistoricalVersion}>
+            删除全部历史
+          </Button>
           <Button onClick={() => setHistoryDrawerOpen(true)}>历史</Button>
         </Space>
       </div>
@@ -249,6 +294,7 @@ const DocumentDetailPage: React.FC = () => {
       <HistoryDrawer
         open={historyDrawerOpen}
         filename={decodedFilename}
+        currentDocId={currentDoc?.id}
         onClose={() => setHistoryDrawerOpen(false)}
       />
 

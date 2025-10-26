@@ -42,6 +42,7 @@ const DocumentListPage: React.FC = () => {
       <HistoryDrawer
         open={historyDrawerOpen}
         filename={historyFilename}
+        currentDocId={undefined}
         onClose={() => setHistoryDrawerOpen(false)}
       />
       <RenameModal

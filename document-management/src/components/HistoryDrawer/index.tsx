@@ -14,14 +14,14 @@ const { Text } = Typography;
 interface HistoryDrawerProps {
   open: boolean;
   filename: string;
+  currentDocId?: number; // ID of currently viewed document
   onClose: () => void;
 }
 
-const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ open, filename, onClose }) => {
+const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ open, filename, currentDocId, onClose }) => {
   const navigate = useNavigate();
   const { projectId, categoryId } = useSelectionStore();
   const { leftDocId, rightDocId, setLeftDocId, setRightDocId, canCompare } = useCompareStore();
-  const [previewDoc, setPreviewDoc] = useState<PlanDocumentResponse | null>(null);
 
   const { data: allDocs } = useProjectDocuments(projectId);
   const history = useSelectHistoryByFilename(allDocs, filename, categoryId);
@@ -31,9 +31,11 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ open, filename, onClose }
 
   useEffect(() => {
     if (open && history && history.length > 0) {
-      setLeftDocId(history[0].id);
+      // Set default left selection to current doc if provided, otherwise use latest
+      const defaultLeftId = currentDocId || history[0].id;
+      setLeftDocId(defaultLeftId);
     }
-  }, [open, history, setLeftDocId]);
+  }, [open, history, currentDocId, setLeftDocId]);
 
   const handleDelete = (doc: PlanDocumentResponse) => {
     Modal.confirm({
@@ -58,6 +60,12 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ open, filename, onClose }
     });
   };
 
+  const handleView = (doc: PlanDocumentResponse) => {
+    if (!projectId) return;
+    const encodedFilename = encodeURIComponent(filename);
+    navigate(`/app/projects/${projectId}/docs/${encodedFilename}?docId=${doc.id}`);
+  };
+
   const handleCompare = () => {
     if (canCompare() && projectId && filename) {
       const encodedFilename = encodeURIComponent(filename);
@@ -65,68 +73,59 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ open, filename, onClose }
     }
   };
 
+  // Determine which version is "current" - use currentDocId if provided, otherwise latest
+  const currentVersionId = currentDocId || (history && history.length > 0 ? history[0].id : undefined);
+
   return (
-    <>
-      <Drawer
-        title={`历史版本 - ${filename}`}
-        placement="right"
-        width={600}
-        onClose={onClose}
-        open={open}
-      >
-        <div className={styles.compareBar}>
-          <Space>
-            <Text>已选:</Text>
-            {leftDocId && <Tag color="blue">左 v{history?.find(h => h.id === leftDocId)?.version}</Tag>}
-            {rightDocId && <Tag color="green">右 v{history?.find(h => h.id === rightDocId)?.version}</Tag>}
-          </Space>
-          <Button type="primary" disabled={!canCompare()} onClick={handleCompare}>
-            对比这两个版本
-          </Button>
-        </div>
+    <Drawer
+      title={`历史版本 - ${filename}`}
+      placement="right"
+      width={600}
+      onClose={onClose}
+      open={open}
+    >
+      <div className={styles.compareBar}>
+        <Space>
+          <Text>已选:</Text>
+          {leftDocId && <Tag color="blue">左 v{history?.find(h => h.id === leftDocId)?.version}</Tag>}
+          {rightDocId && <Tag color="green">右 v{history?.find(h => h.id === rightDocId)?.version}</Tag>}
+        </Space>
+        <Button type="primary" disabled={!canCompare()} onClick={handleCompare}>
+          对比这两个版本
+        </Button>
+      </div>
 
-        <List
-          dataSource={history}
-          renderItem={(item) => (
-            <List.Item
-              key={item.id}
-              actions={[
-                <Button size="small" onClick={() => setLeftDocId(item.id)} key="left">设为左</Button>,
-                <Button size="small" onClick={() => setRightDocId(item.id)} key="right">设为右</Button>,
-                <Button size="small" onClick={() => setPreviewDoc(item)} key="preview">查看</Button>,
-                <Button size="small" onClick={() => handleRevert(item)} key="revert">回退</Button>,
-                <Button size="small" danger onClick={() => handleDelete(item)} key="delete">删除</Button>
-              ]}
-            >
-              <List.Item.Meta
-                title={
-                  <Space>
-                    <Text strong>v{item.version}</Text>
-                    {history?.[0] && item.id === history[0].id && <Tag color="success">当前</Tag>}
-                  </Space>
-                }
-                description={
-                  <Space direction="vertical" size={0}>
-                    <Text type="secondary">{dayjs(item.created_time).format('YYYY-MM-DD HH:mm:ss')}</Text>
-                    <Text type="secondary">来源: {item.source}</Text>
-                  </Space>
-                }
-              />
-            </List.Item>
-          )}
-        />
-      </Drawer>
-
-      <Modal
-        title={`预览 v${previewDoc?.version}`}
-        open={!!previewDoc}
-        onCancel={() => setPreviewDoc(null)}
-        footer={null}
-        width={800}
-      >
-        <pre className={styles.preview}>{previewDoc?.content}</pre>
-      </Modal>
-    </>
+      <List
+        dataSource={history}
+        renderItem={(item) => (
+          <List.Item
+            key={item.id}
+            actions={[
+              <Button size="small" onClick={() => setLeftDocId(item.id)} key="left">设为左</Button>,
+              <Button size="small" onClick={() => setRightDocId(item.id)} key="right">设为右</Button>,
+              <Button size="small" onClick={() => handleView(item)} key="view">查看</Button>,
+              <Button size="small" onClick={() => handleRevert(item)} key="revert">回退</Button>,
+              <Button size="small" danger onClick={() => handleDelete(item)} key="delete">删除</Button>
+            ]}
+          >
+            <List.Item.Meta
+              title={
+                <Space>
+                  <Text strong>v{item.version}</Text>
+                  {item.id === currentVersionId && <Tag color="success">当前</Tag>}
+                </Space>
+              }
+              description={
+                <Space direction="vertical" size={0}>
+                  <Text type="secondary">{dayjs(item.created_time).format('YYYY-MM-DD HH:mm:ss')}</Text>
+                  <Text type="secondary">来源: {item.source}</Text>
+                </Space>
+              }
+            />
+          </List.Item>
+        )}
+      />
+    </Drawer>
   );
 };
 
