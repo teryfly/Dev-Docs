@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Table, Button, Space, Select, Modal, Input } from 'antd';
+import { Table, Button, Space, Select, Modal, Input, message } from 'antd';
 import type { TableProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useDeleteAllHistory } from '@/hooks/useDocuments';
+import { useProjects } from '@/hooks/useProjects';
 import { PlanDocumentResponse } from '@/types/api';
 import dayjs from 'dayjs';
 import styles from './styles.module.css';
 import { useProjectDocuments, useSelectLatestByFilename } from '@/hooks/useProjectDocuments';
+import apiClient from '@/api/client';
 
 interface DocumentListProps {
   onOpenHistory: (filename: string) => void;
@@ -31,14 +33,13 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
     setPageSize
   } = useSelectionStore();
 
+  const { data: projects } = useProjects();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PlanDocumentResponse | null>(null);
   const [confirmText, setConfirmText] = useState('');
 
-  // Fetch full history once by project
   const { data: allDocs, isLoading } = useProjectDocuments(projectId);
-  // Compute latest-by-filename with filters/sort/pagination
   const data = useSelectLatestByFilename(allDocs, {
     projectId,
     categoryId,
@@ -95,6 +96,34 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
         setSelectedRowKeys([]);
       }
     });
+  };
+
+  const handleMergeExport = async () => {
+    const docs = (data?.items || []).filter(item => selectedRowKeys.includes(item.id));
+    if (docs.length === 0) {
+      message.warning('请先选择要合并的文档');
+      return;
+    }
+    try {
+      const ids = docs.map(d => d.id);
+      const response = await apiClient.post('/v1/plan/documents/merge', {
+        document_ids: ids
+      });
+      const { count, merged } = response.data;
+
+      const projectName = projects?.find(p => p.id === projectId)?.name || '项目';
+      const fileName = `${projectName}-文档${count}个.txt`;
+      const blob = new Blob([merged], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      message.success(`合并导出成功，共 ${count} 个文档`);
+    } catch (error: any) {
+      message.error(`合并导出失败: ${error.message}`);
+    }
   };
 
   const goDetail = (record: PlanDocumentResponse) => {
@@ -163,6 +192,8 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
     );
   }
 
+  const selectedCount = selectedRowKeys.length;
+
   return (
     <div className={styles.container}>
       <div className={styles.toolbar}>
@@ -187,6 +218,7 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
               { label: '升序', value: 'asc' }
             ]}
           />
+          <span>已选择 {selectedCount} 项</span>
         </Space>
         <Space>
           <Button disabled={selectedRowKeys.length === 0} onClick={handleBatchMove}>
@@ -194,6 +226,9 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
           </Button>
           <Button danger disabled={selectedRowKeys.length === 0} onClick={handleBatchDelete}>
             批量删除
+          </Button>
+          <Button type="dashed" disabled={selectedRowKeys.length === 0} onClick={handleMergeExport}>
+            合并导出
           </Button>
         </Space>
       </div>
