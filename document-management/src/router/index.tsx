@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/AppLayout';
 import DocumentListPage from '@/pages/DocumentListPage';
 import DocumentDetailPage from '@/pages/DocumentDetailPage';
 import ComparePage from '@/pages/ComparePage';
+import CreateDocumentPage from '@/pages/CreateDocumentPage';
 
 export const router = createBrowserRouter([
   {
@@ -44,6 +45,15 @@ export const router = createBrowserRouter([
       {
         path: 'projects/:pid/categories/:cid/docs/:filename/compare',
         element: <ComparePage />
+      },
+      // New: create document routes
+      {
+        path: 'projects/:pid/create',
+        element: <CreateDocumentPage />
+      },
+      {
+        path: 'projects/:pid/categories/:cid/create',
+        element: <CreateDocumentPage />
       }
     ]
   }

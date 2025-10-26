@@ -4,13 +4,11 @@ import { SearchOutlined, PlusOutlined } from '@ant-design/icons';
 import { useProjects } from '@/hooks/useProjects';
 import { useCategories } from '@/hooks/useCategories';
 import { useSelectionStore } from '@/stores/selectionStore';
+import { useNavigate } from 'react-router-dom';
 import styles from './styles.module.css';
 
-interface TopBarProps {
-  onNewDocument: () => void;
-}
-
-const TopBar: React.FC<TopBarProps> = ({ onNewDocument }) => {
+const TopBar: React.FC = () => {
+  const navigate = useNavigate();
   const { data: projects } = useProjects();
   const { data: categories } = useCategories();
   const {
@@ -27,6 +25,15 @@ const TopBar: React.FC<TopBarProps> = ({ onNewDocument }) => {
   };
 
   const canCreateDocument = projectId && categoryId;
+
+  const goCreate = () => {
+    if (!projectId) return;
+    if (categoryId) {
+      navigate(`/app/projects/${projectId}/categories/${categoryId}/create`);
+    } else {
+      navigate(`/app/projects/${projectId}/create`);
+    }
+  };
 
   return (
     <div className={styles.topBar}>
@@ -60,7 +67,7 @@ const TopBar: React.FC<TopBarProps> = ({ onNewDocument }) => {
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={onNewDocument}
+          onClick={goCreate}
           disabled={!canCreateDocument}
         >
           新建文档
