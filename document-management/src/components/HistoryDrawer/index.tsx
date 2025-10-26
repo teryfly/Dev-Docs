@@ -69,7 +69,16 @@ const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ open, filename, currentDo
   const handleCompare = () => {
     if (canCompare() && projectId && filename) {
       const encodedFilename = encodeURIComponent(filename);
-      navigate(`/app/projects/${projectId}/docs/${encodedFilename}/compare?left=${leftDocId}&right=${rightDocId}`);
+      const comparePath = `/app/projects/${projectId}/docs/${encodedFilename}/compare?left=${leftDocId}&right=${rightDocId}`;
+      // open compare page in a new fullscreen window
+      const url = `${window.location.origin}${comparePath}`;
+      window.open(
+        url,
+        '_blank',
+        // Try to maximize: modern browsers ignore most specs for _blank,
+        // but we provide reasonable hints
+        'noopener,noreferrer'
+      );
     }
   };
 
