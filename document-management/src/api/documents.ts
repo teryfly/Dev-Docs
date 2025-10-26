@@ -99,9 +99,22 @@ export const documentsApi = {
     return response.data;
   },
 
+  // Legacy: delete all by project+category+filename
   deleteAll: async (params: {
     project_id: number;
     category_id: number;
+    filename: string;
+  }): Promise<DeleteResponse> => {
+    const response = await apiClient.delete<DeleteResponse>(
+      '/v1/plan/documents',
+      { params: cleanParams(params) }
+    );
+    return response.data;
+  },
+
+  // New: delete all history by project + filename (category-agnostic)
+  deleteAllByFilename: async (params: {
+    project_id: number;
     filename: string;
   }): Promise<DeleteResponse> => {
     const response = await apiClient.delete<DeleteResponse>(

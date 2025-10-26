@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -26,14 +26,14 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, className })
     
     // Step 2: Now process @startuml...@enduml blocks that are NOT in code blocks
     const plantUmlRegex = /@startuml([\s\S]*?)@enduml/g;
-    protectedContent = protectedContent.replace(plantUmlRegex, (match, umlContent) => {
+    protectedContent = protectedContent.replace(plantUmlRegex, (match) => {
       try {
         // Encode PlantUML content
         const encoded = encode(match);
         // Use PlantUML server to render image
         const imageUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
-        // Return Markdown image syntax
-        return `![PlantUML Diagram](${imageUrl})`;
+        // Return Markdown image syntax and mark via title "plantuml-image" for renderer
+        return `![PlantUML Diagram](${imageUrl} "plantuml-image")`;
       } catch (error) {
         console.error('PlantUML encoding error:', error);
         // If encoding fails, return as code block
@@ -50,6 +50,11 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, className })
     return protectedContent;
   }, [content]);
 
+  const handleDblClickOpen = useCallback((src?: string) => {
+    if (!src) return;
+    window.open(src, '_blank', 'noopener,noreferrer');
+  }, []);
+
   return (
     <div className={`${styles.markdownPreview} ${className || ''}`}>
       <ReactMarkdown
@@ -57,8 +62,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, className })
         rehypePlugins={[rehypeRaw, rehypeSanitize]}
         components={{
           // Custom code block rendering
-          code({ node, inline, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || '');
+          code({ inline, className, children, ...props }) {
             return !inline ? (
               <pre className={styles.codeBlock}>
                 <code className={className} {...props}>
@@ -83,14 +87,19 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, className })
               </a>
             );
           },
-          // Custom image rendering
-          img({ src, alt }) {
+          // Custom image rendering with double-click open for PlantUML images
+          img({ src, alt, title }) {
+            const isPlantUml = title === 'plantuml-image';
+            const onDoubleClick = isPlantUml ? () => handleDblClickOpen(src) : undefined;
             return (
-              <img 
-                src={src} 
-                alt={alt} 
+              <img
+                src={src}
+                alt={alt}
+                title={title}
                 className={styles.image}
                 loading="lazy"
+                onDoubleClick={onDoubleClick}
+                style={isPlantUml ? { cursor: 'zoom-in' } : undefined}
               />
             );
           }
