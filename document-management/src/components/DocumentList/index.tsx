@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Button, Space, Select, Modal, Input, message } from 'antd';
+import { Table, Button, Space, Select, Modal, message } from 'antd';
 import type { TableProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useSelectionStore } from '@/stores/selectionStore';
@@ -35,9 +35,6 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
 
   const { data: projects } = useProjects();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<PlanDocumentResponse | null>(null);
-  const [confirmText, setConfirmText] = useState('');
 
   const { data: allDocs, isLoading } = useProjectDocuments(projectId);
   const data = useSelectLatestByFilename(allDocs, {
@@ -53,21 +50,22 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
   const deleteAllMutation = useDeleteAllHistory();
 
   const handleDelete = (doc: PlanDocumentResponse) => {
-    setDeleteTarget(doc);
-    setConfirmText('');
-    setDeleteModalVisible(true);
-  };
-
-  const confirmDelete = async () => {
-    if (deleteTarget && confirmText === deleteTarget.filename && projectId && categoryId) {
-      await deleteAllMutation.mutateAsync({
-        project_id: projectId,
-        category_id: categoryId,
-        filename: deleteTarget.filename
-      });
-      setDeleteModalVisible(false);
-      setDeleteTarget(null);
-    }
+    if (!projectId) return;
+    
+    Modal.confirm({
+      title: '删除全部历史',
+      content: `确定要删除文件 "${doc.filename}" 的全部历史版本吗？此操作不可恢复。`,
+      okText: '确认删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await deleteAllMutation.mutateAsync({
+          project_id: projectId,
+          category_id: doc.category_id,
+          filename: doc.filename
+        });
+      }
+    });
   };
 
   const handleBatchMove = () => {
@@ -84,12 +82,15 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
     Modal.confirm({
       title: '批量删除确认',
       content: `确定要删除选中的 ${docs.length} 个文档的全部历史吗？此操作不可恢复。`,
+      okText: '确认删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
       onOk: async () => {
-        if (!projectId || !categoryId) return;
+        if (!projectId) return;
         for (const doc of docs) {
           await deleteAllMutation.mutateAsync({
             project_id: projectId,
-            category_id: categoryId,
+            category_id: doc.category_id,
             filename: doc.filename
           });
         }
@@ -254,25 +255,6 @@ const DocumentList: React.FC<DocumentListProps> = ({ onOpenHistory, onRename, on
           showTotal: (total) => `共 ${total} 条`
         }}
       />
-
-      <Modal
-        title="删除全部历史"
-        open={deleteModalVisible}
-        onOk={confirmDelete}
-        onCancel={() => {
-          setDeleteModalVisible(false);
-          setDeleteTarget(null);
-        }}
-        okButtonProps={{ disabled: confirmText !== deleteTarget?.filename }}
-      >
-        <p>输入文件名以确认删除所有历史版本，此操作不可恢复。</p>
-        <p>文件名: <strong>{deleteTarget?.filename}</strong></p>
-        <Input
-          placeholder="请输入文件名确认"
-          value={confirmText}
-          onChange={(e) => setConfirmText(e.target.value)}
-        />
-      </Modal>
     </div>
   );
 };

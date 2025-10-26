@@ -4,9 +4,6 @@ import { queryKeys } from './queryKeys';
 import { message } from 'antd';
 import { invalidateProjectDocuments } from './useProjectDocuments';
 
-// Deprecated: server-side latest list is replaced by client-side selection over full history
-// Removed useDocumentsLatest
-
 // Keep history-by-filename query unused by UI; prefer unified cache via useProjectDocuments
 export const useDocumentsHistory = (params: {
   project_id?: number;
@@ -89,7 +86,7 @@ export const useDeleteDocument = () => {
   });
 };
 
-// 删除全部历史
+// 删除全部历史 - 使用 project_id + category_id + filename
 export const useDeleteAllHistory = () => {
   const queryClient = useQueryClient();
   return useMutation({

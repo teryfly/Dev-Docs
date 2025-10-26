@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Space, Modal, message, Input, Tag } from 'antd';
+import { Button, Space, Modal, message, Tag } from 'antd';
 import { ArrowLeftOutlined, DownloadOutlined, EditOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons';
 import { Editor } from '@monaco-editor/react';
 import { useSelectionStore } from '@/stores/selectionStore';
@@ -30,7 +30,6 @@ const DocumentDetailPage: React.FC = () => {
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [moveModalOpen, setMoveModalOpen] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   
   const [leftWidth, setLeftWidth] = useState(40);
   const [isDragging, setIsDragging] = useState(false);
@@ -96,35 +95,21 @@ const DocumentDetailPage: React.FC = () => {
   };
 
   const handleDeleteAll = () => {
-    setDeleteConfirmText('');
+    if (!projectId || !currentDoc) return;
+
     Modal.confirm({
       title: '删除全部历史',
-      content: (
-        <div>
-          <p>输入文件名以确认删除所有历史版本，此操作不可恢复。</p>
-          <p>文件名: <strong>{decodedFilename}</strong></p>
-          <Input
-            placeholder="请输入文件名确认"
-            value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            style={{ marginTop: '8px' }}
-          />
-        </div>
-      ),
+      content: `确定要删除文件 "${decodedFilename}" 的全部历史版本吗？此操作不可恢复。`,
+      okText: '确认删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
       onOk: async () => {
-        if (deleteConfirmText === decodedFilename && projectId) {
-          if (categoryId) {
-            await deleteAllMutation.mutateAsync({
-              project_id: projectId,
-              category_id: categoryId,
-              filename: decodedFilename
-            });
-          }
-          navigate(`/app/projects/${projectId}`);
-        } else {
-          message.error('文件名不匹配');
-          return Promise.reject();
-        }
+        await deleteAllMutation.mutateAsync({
+          project_id: projectId,
+          category_id: currentDoc.category_id,
+          filename: decodedFilename
+        });
+        navigate(`/app/projects/${projectId}`);
       }
     });
   };
