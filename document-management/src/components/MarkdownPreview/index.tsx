@@ -31,7 +31,8 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ content, className })
         // Encode PlantUML content
         const encoded = encode(match);
         // Use PlantUML server to render image
-        const imageUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+        //const imageUrl = `https://www.plantuml.com/plantuml/svg/${encoded}`;
+        const imageUrl = `http://192.168.120.221:30008/svg/${encoded}`;
         // Return Markdown image syntax and mark via title "plantuml-image" for renderer
         return `![PlantUML Diagram](${imageUrl} "plantuml-image")`;
       } catch (error) {
